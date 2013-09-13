@@ -1,9 +1,10 @@
-package de.cinovo.timeseries.impl;
+package de.cinovo.timeseries.impl.ringskip;
 
 import com.google.common.base.Preconditions;
 
 import de.cinovo.timeseries.IFixedTimeWindow;
 import de.cinovo.timeseries.ITimeSeries;
+import de.cinovo.timeseries.impl.TimeSeriesPair;
 
 /**
  * 
@@ -14,11 +15,9 @@ import de.cinovo.timeseries.ITimeSeries;
  */
 public final class FixedTimeWindow implements IFixedTimeWindow {
 	
-	private final long window;
-	
 	private long lastTime = Long.MIN_VALUE;
 	
-	private final TimeBasedQueue values;
+	private final ITimeBasedQueue values;
 	
 	private final TimeSeriesImplementation seriesImplementation;
 	
@@ -30,8 +29,8 @@ public final class FixedTimeWindow implements IFixedTimeWindow {
 	public FixedTimeWindow(final long window, final int expectedMaxSize) {
 		Preconditions.checkArgument(window > 0, "window must be > 0");
 		Preconditions.checkArgument(expectedMaxSize > 0, "expectedMaxSize must be > 0");
-		this.window = window;
-		this.values = new TimeBasedQueue(expectedMaxSize);
+		
+		this.values = new TimeBasedQueue(window, expectedMaxSize);
 		this.seriesImplementation = new TimeSeriesImplementation(this.values);
 	}
 	
@@ -39,13 +38,13 @@ public final class FixedTimeWindow implements IFixedTimeWindow {
 	 * @param window Window size (e. g. if you use milliseconds as time than window size is in milliseconds)
 	 */
 	public FixedTimeWindow(final long window) {
-		this(window, 10000);
+		this(window, 100000);
 	}
 	
 	@Override
 	public ITimeSeries get(final long now) {
 		this.checkTime(now);
-		if (this.cleanUp(now) == true) {
+		if (this.values.cleanUp(now) == true) {
 			this.seriesImplementation.clearCache();
 		}
 		return this.seriesImplementation;
@@ -60,7 +59,7 @@ public final class FixedTimeWindow implements IFixedTimeWindow {
 	
 	@Override
 	public long windowLength() {
-		return this.window;
+		return this.values.window();
 	}
 	
 	private void checkTime(final long now) {
@@ -68,26 +67,6 @@ public final class FixedTimeWindow implements IFixedTimeWindow {
 			throw new IllegalArgumentException("now is in the past");
 		}
 		this.lastTime = now;
-	}
-	
-	/**
-	 * @param now Time
-	 * @return true if something was cleaned up
-	 */
-	private boolean cleanUp(final long now) {
-		boolean cleanedUp = false;
-		while (true) {
-			final TimeSeriesPair pair = this.values.pollFirst();
-			if (pair == null) {
-				break;
-			}
-			if (pair.time() >= (now - this.window)) { // check if the value is not too old
-				this.values.addFirst(pair); // reinsert the value at the beginning
-				break;
-			}
-			cleanedUp = true;
-		}
-		return cleanedUp;
 	}
 	
 }

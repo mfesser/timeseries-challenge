@@ -1,6 +1,7 @@
 package de.cinovo.timeseries.impl;
 
 import de.cinovo.timeseries.IFixedTimeWindow;
+import de.cinovo.timeseries.impl.ringskip.FixedTimeWindow;
 import de.cinovo.timeseries.test.AFixedTimeWindowTest;
 
 /**

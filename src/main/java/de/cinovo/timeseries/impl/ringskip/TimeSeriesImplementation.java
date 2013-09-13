@@ -1,4 +1,4 @@
-package de.cinovo.timeseries.impl;
+package de.cinovo.timeseries.impl.ringskip;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -6,6 +6,7 @@ import java.util.Arrays;
 
 import de.cinovo.timeseries.ITimeSeries;
 import de.cinovo.timeseries.ITimeSeriesPair;
+import de.cinovo.timeseries.impl.TimeSeriesPair;
 
 /**
  * Copyright 2013 Cinovo AG<br>
@@ -16,7 +17,7 @@ import de.cinovo.timeseries.ITimeSeriesPair;
  */
 public class TimeSeriesImplementation implements ITimeSeries {
 	
-	private final TimeBasedQueue values;
+	private final ITimeBasedQueue values;
 	
 	private static final TimeSeriesPair CLEARED = new TimeSeriesPair(Long.MIN_VALUE, Float.NaN);
 	
@@ -36,7 +37,7 @@ public class TimeSeriesImplementation implements ITimeSeries {
 	/**
 	 * @param values base for this series
 	 */
-	public TimeSeriesImplementation(final TimeBasedQueue values) {
+	public TimeSeriesImplementation(final ITimeBasedQueue values) {
 		super();
 		this.values = values;
 	}

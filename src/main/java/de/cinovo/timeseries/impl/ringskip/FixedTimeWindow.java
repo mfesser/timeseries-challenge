@@ -14,59 +14,58 @@ import de.cinovo.timeseries.impl.TimeSeriesPair;
  * 
  */
 public final class FixedTimeWindow implements IFixedTimeWindow {
-	
+
 	private long lastTime = Long.MIN_VALUE;
-	
-	private final ITimeBasedQueue values;
-	
-	private final TimeSeriesImplementation seriesImplementation;
-	
-	
+
+	private final TimeBucket seriesImplementation;
+
 	/**
-	 * @param window Window size (e. g. if you use milliseconds as time than window size is in milliseconds)
-	 * @param expectedMaxSize Expected maximum number of values
+	 * @param window
+	 *            Window size (e. g. if you use milliseconds as time than window
+	 *            size is in milliseconds)
+	 * @param expectedMaxSize
+	 *            Expected maximum number of values
 	 */
 	public FixedTimeWindow(final long window, final int expectedMaxSize) {
 		Preconditions.checkArgument(window > 0, "window must be > 0");
-		Preconditions.checkArgument(expectedMaxSize > 0, "expectedMaxSize must be > 0");
-		
-		this.values = new TimeBasedQueue(window, expectedMaxSize);
-		this.seriesImplementation = new TimeSeriesImplementation(this.values);
+		Preconditions.checkArgument(expectedMaxSize > 0,
+				"expectedMaxSize must be > 0");
+
+		this.seriesImplementation = new TimeBucket(window);
 	}
-	
+
 	/**
-	 * @param window Window size (e. g. if you use milliseconds as time than window size is in milliseconds)
+	 * @param window
+	 *            Window size (e. g. if you use milliseconds as time than window
+	 *            size is in milliseconds)
 	 */
 	public FixedTimeWindow(final long window) {
 		this(window, 100000);
 	}
-	
+
 	@Override
 	public ITimeSeries get(final long now) {
 		this.checkTime(now);
-		if (this.values.cleanUp(now) == true) {
-			this.seriesImplementation.clearCache();
-		}
+		this.seriesImplementation.removeTail(now);
 		return this.seriesImplementation;
 	}
-	
+
 	@Override
 	public void add(final long time, final float value) {
 		this.checkTime(time);
-		this.values.add(new TimeSeriesPair(time, value));
-		this.seriesImplementation.clearCache();
+		this.seriesImplementation.addValue(new TimeSeriesPair(time, value));
 	}
-	
+
 	@Override
 	public long windowLength() {
-		return this.values.window();
+		return this.seriesImplementation.window();
 	}
-	
+
 	private void checkTime(final long now) {
 		if (now < this.lastTime) {
 			throw new IllegalArgumentException("now is in the past");
 		}
 		this.lastTime = now;
 	}
-	
+
 }

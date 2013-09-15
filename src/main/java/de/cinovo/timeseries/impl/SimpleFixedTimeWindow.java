@@ -1,7 +1,5 @@
 package de.cinovo.timeseries.impl;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 
@@ -19,35 +17,40 @@ import de.cinovo.timeseries.ITimeSeriesPair;
  * 
  */
 public final class SimpleFixedTimeWindow implements IFixedTimeWindow {
-	
+
 	private final long window;
-	
+
 	private long lastTime = Long.MIN_VALUE;
-	
+
 	private final ArrayDeque<TimeSeriesPair> values;
-	
+
 	private final Wrapper wrapper;
-	
-	
+
 	/**
-	 * @param window Window size (e. g. if you use milliseconds as time than window size is in milliseconds)
-	 * @param expectedMaxSize Expected maximum number of values
+	 * @param window
+	 *            Window size (e. g. if you use milliseconds as time than window
+	 *            size is in milliseconds)
+	 * @param expectedMaxSize
+	 *            Expected maximum number of values
 	 */
 	public SimpleFixedTimeWindow(final long window, final int expectedMaxSize) {
 		Preconditions.checkArgument(window > 0, "window must be > 0");
-		Preconditions.checkArgument(expectedMaxSize > 0, "expectedMaxSize must be > 0");
+		Preconditions.checkArgument(expectedMaxSize > 0,
+				"expectedMaxSize must be > 0");
 		this.window = window;
 		this.values = new ArrayDeque<TimeSeriesPair>(expectedMaxSize);
 		this.wrapper = new Wrapper(this.values);
 	}
-	
+
 	/**
-	 * @param window Window size (e. g. if you use milliseconds as time than window size is in milliseconds)
+	 * @param window
+	 *            Window size (e. g. if you use milliseconds as time than window
+	 *            size is in milliseconds)
 	 */
 	public SimpleFixedTimeWindow(final long window) {
 		this(window, 10000);
 	}
-	
+
 	@Override
 	public ITimeSeries get(final long now) {
 		this.checkTime(now);
@@ -56,28 +59,29 @@ public final class SimpleFixedTimeWindow implements IFixedTimeWindow {
 		}
 		return this.wrapper;
 	}
-	
+
 	@Override
 	public void add(final long time, final float value) {
 		this.checkTime(time);
 		this.values.add(new TimeSeriesPair(time, value));
 		this.wrapper.clearCache();
 	}
-	
+
 	@Override
 	public long windowLength() {
 		return this.window;
 	}
-	
+
 	private void checkTime(final long now) {
 		if (now < this.lastTime) {
 			throw new IllegalArgumentException("now is in the past");
 		}
 		this.lastTime = now;
 	}
-	
+
 	/**
-	 * @param now Time
+	 * @param now
+	 *            Time
 	 * @return true if something was cleaned up
 	 */
 	private boolean cleanUp(final long now) {
@@ -87,40 +91,41 @@ public final class SimpleFixedTimeWindow implements IFixedTimeWindow {
 			if (pair == null) {
 				break;
 			}
-			if (pair.time() >= (now - this.window)) { // check if the value is not too old
-				this.values.addFirst(pair); // reinsert the value at the beginning
+			if (pair.time() >= (now - this.window)) { // check if the value is
+														// not too old
+				this.values.addFirst(pair); // reinsert the value at the
+											// beginning
 				break;
 			}
 			cleanedUp = true;
 		}
 		return cleanedUp;
 	}
-	
-	
+
 	private static final class Wrapper implements ITimeSeries {
-		
+
 		private final ArrayDeque<TimeSeriesPair> values;
-		
-		private static final TimeSeriesPair CLEARED = new TimeSeriesPair(Long.MIN_VALUE, Float.NaN);
-		
+
+		private static final TimeSeriesPair CLEARED = new TimeSeriesPair(
+				Long.MIN_VALUE, Float.NaN);
+
 		private TimeSeriesPair cachedMaximum = Wrapper.CLEARED;
-		
+
 		private TimeSeriesPair cachedMinimum = Wrapper.CLEARED;
-		
+
 		private float cachedAvergage = Float.POSITIVE_INFINITY;
-		
+
 		private float cachedVariance = Float.POSITIVE_INFINITY;
-		
+
 		private float cachedDeviation = Float.POSITIVE_INFINITY;
-		
+
 		private float cachedMedian = Float.POSITIVE_INFINITY;
-		
-		
+
 		public Wrapper(final ArrayDeque<TimeSeriesPair> values) {
 			super();
 			this.values = values;
 		}
-		
+
 		private void clearCache() {
 			this.cachedMaximum = Wrapper.CLEARED;
 			this.cachedMinimum = Wrapper.CLEARED;
@@ -129,7 +134,7 @@ public final class SimpleFixedTimeWindow implements IFixedTimeWindow {
 			this.cachedDeviation = Float.POSITIVE_INFINITY;
 			this.cachedMedian = Float.POSITIVE_INFINITY;
 		}
-		
+
 		private void refreshCacheMinMaxAvg() {
 			final ITimeSeriesPair first = this.first();
 			if (first != null) {
@@ -137,7 +142,7 @@ public final class SimpleFixedTimeWindow implements IFixedTimeWindow {
 				float min = first.value();
 				long maxTime = first.time();
 				float max = first.value();
-				BigDecimal sum = BigDecimal.ZERO;
+				double sum = 0d;
 				for (final TimeSeriesPair pair : this.values) {
 					if (pair.value() < min) {
 						minTime = pair.time();
@@ -147,18 +152,18 @@ public final class SimpleFixedTimeWindow implements IFixedTimeWindow {
 						maxTime = pair.time();
 						max = pair.value();
 					}
-					sum = sum.add(new BigDecimal(pair.value()));
+					sum = sum + pair.value();
 				}
 				this.cachedMinimum = new TimeSeriesPair(minTime, min);
 				this.cachedMaximum = new TimeSeriesPair(maxTime, max);
-				this.cachedAvergage = sum.divide(new BigDecimal(this.values.size()), 4, RoundingMode.HALF_UP).floatValue();
+				this.cachedAvergage = (float) (sum / this.values.size());
 			} else {
 				this.cachedMinimum = null;
 				this.cachedMaximum = null;
 				this.cachedAvergage = Float.NaN;
 			}
 		}
-		
+
 		private void refreshCacheVarDev() {
 			if (Float.isInfinite(this.cachedAvergage)) {
 				this.refreshCacheMinMaxAvg();
@@ -169,14 +174,15 @@ public final class SimpleFixedTimeWindow implements IFixedTimeWindow {
 					final float abweichung = pair.value() - this.cachedAvergage;
 					sumAbweichungImQuadrat += abweichung * abweichung;
 				}
-				this.cachedVariance = (float) (sumAbweichungImQuadrat / this.values.size());
+				this.cachedVariance = (float) (sumAbweichungImQuadrat / this.values
+						.size());
 				this.cachedDeviation = (float) Math.sqrt(this.cachedVariance);
 			} else {
 				this.cachedVariance = Float.NaN;
 				this.cachedDeviation = Float.NaN;
 			}
 		}
-		
+
 		private void refreshCacheMed() {
 			if (this.values.size() > 0) {
 				final float[] v = new float[this.values.size()];
@@ -197,17 +203,17 @@ public final class SimpleFixedTimeWindow implements IFixedTimeWindow {
 				this.cachedMedian = Float.NaN;
 			}
 		}
-		
+
 		@Override
 		public ITimeSeriesPair first() {
 			return this.values.peekFirst();
 		}
-		
+
 		@Override
 		public ITimeSeriesPair last() {
 			return this.values.peekLast();
 		}
-		
+
 		@Override
 		public ITimeSeriesPair minimum() {
 			if (this.cachedMinimum == Wrapper.CLEARED) {
@@ -215,7 +221,7 @@ public final class SimpleFixedTimeWindow implements IFixedTimeWindow {
 			}
 			return this.cachedMinimum;
 		}
-		
+
 		@Override
 		public ITimeSeriesPair maximum() {
 			if (this.cachedMaximum == Wrapper.CLEARED) {
@@ -223,7 +229,7 @@ public final class SimpleFixedTimeWindow implements IFixedTimeWindow {
 			}
 			return this.cachedMaximum;
 		}
-		
+
 		@Override
 		public float avergage() {
 			if (Float.isInfinite(this.cachedAvergage)) {
@@ -231,7 +237,7 @@ public final class SimpleFixedTimeWindow implements IFixedTimeWindow {
 			}
 			return this.cachedAvergage;
 		}
-		
+
 		@Override
 		public float variance() {
 			if (Float.isInfinite(this.cachedVariance)) {
@@ -239,7 +245,7 @@ public final class SimpleFixedTimeWindow implements IFixedTimeWindow {
 			}
 			return this.cachedVariance;
 		}
-		
+
 		@Override
 		public float deviation() {
 			if (Float.isInfinite(this.cachedDeviation)) {
@@ -247,7 +253,7 @@ public final class SimpleFixedTimeWindow implements IFixedTimeWindow {
 			}
 			return this.cachedDeviation;
 		}
-		
+
 		@Override
 		public float median() {
 			if (Float.isInfinite(this.cachedMedian)) {
@@ -255,12 +261,12 @@ public final class SimpleFixedTimeWindow implements IFixedTimeWindow {
 			}
 			return this.cachedMedian;
 		}
-		
+
 		@Override
 		public int size() {
 			return this.values.size();
 		}
-		
+
 	}
-	
+
 }

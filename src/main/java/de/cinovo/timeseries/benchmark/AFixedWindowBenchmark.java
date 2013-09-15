@@ -16,20 +16,19 @@ import de.cinovo.timeseries.impl.TimeSeriesPair;
  * 
  */
 public abstract class AFixedWindowBenchmark {
-	
+
 	private static final int WARM_UP_CYCLES = 100;
-	
+
 	private static final int MEASURE_CYCLES = 1000;
-	
+
 	private final List<ITimeSeriesPair> pairs;
-	
+
 	private final String comment;
-	
+
 	private final ABenchmarkSuite benchmarkSuite;
-	
+
 	private final long windowSize;
-	
-	
+
 	/**
 	 * Create random benchmark data.
 	 */
@@ -47,15 +46,25 @@ public abstract class AFixedWindowBenchmark {
 			value = Math.round(value * 100.0f) / 100.0f;
 		}
 	}
-	
+
 	/**
-	 * @param aBenchmarkSuite Benchmark suite
-	 * @param aWindowSize Window size
-	 * @param aComment Comment
-	 * @throws Exception If something went wrong...
+	 * @param aBenchmarkSuite
+	 *            Benchmark suite
+	 * @param aWindowSize
+	 *            Window size
+	 * @param aComment
+	 *            Comment
+	 * @throws Exception
+	 *             If something went wrong...
 	 */
-	protected AFixedWindowBenchmark(final ABenchmarkSuite aBenchmarkSuite, final long aWindowSize, final String aComment) throws Exception {
-		try (final BufferedReader br = new BufferedReader(new InputStreamReader(this.getClass().getClassLoader().getResourceAsStream("de/cinovo/timeseries/benchmark/benchmark.data")))) {
+	protected AFixedWindowBenchmark(final ABenchmarkSuite aBenchmarkSuite,
+			final long aWindowSize, final String aComment) throws Exception {
+		try (final BufferedReader br = new BufferedReader(
+				new InputStreamReader(
+						this.getClass()
+								.getClassLoader()
+								.getResourceAsStream(
+										"de/cinovo/timeseries/benchmark/benchmark.data")))) {
 			String line = null;
 			final ArrayList<ITimeSeriesPair> aPairs = new ArrayList<ITimeSeriesPair>();
 			while ((line = br.readLine()) != null) {
@@ -68,19 +77,24 @@ public abstract class AFixedWindowBenchmark {
 			this.comment = aComment;
 			this.benchmarkSuite = aBenchmarkSuite;
 			this.windowSize = aWindowSize;
+			System.out.println("Data to be tested size: " + this.pairs.size());
 		}
 	}
-	
+
 	/**
-	 * @param aBenchmarkSuite Benchmark suite
-	 * @param aWindowSize Window size
-	 * @throws Exception If something went wrong...
+	 * @param aBenchmarkSuite
+	 *            Benchmark suite
+	 * @param aWindowSize
+	 *            Window size
+	 * @throws Exception
+	 *             If something went wrong...
 	 */
-	protected AFixedWindowBenchmark(final ABenchmarkSuite aBenchmarkSuite, final long aWindowSize) throws Exception {
+	protected AFixedWindowBenchmark(final ABenchmarkSuite aBenchmarkSuite,
+			final long aWindowSize) throws Exception {
 		this(aBenchmarkSuite, aWindowSize, "window: " + aWindowSize);
-		
+
 	}
-	
+
 	private void warmUp() {
 		System.gc();
 		for (int i = 0; i < AFixedWindowBenchmark.WARM_UP_CYCLES; i++) {
@@ -91,7 +105,7 @@ public abstract class AFixedWindowBenchmark {
 		}
 		System.gc();
 	}
-	
+
 	private void call(final IFixedTimeWindow impl, final ITimeSeriesPair pair) {
 		impl.add(pair.time(), pair.value());
 		this.call(impl.get(pair.time()));
@@ -100,7 +114,7 @@ public abstract class AFixedWindowBenchmark {
 		this.call(impl.get(pair.time()));
 		this.call(impl.get(pair.time()));
 	}
-	
+
 	private long[] measure() {
 		final long[] runtimes = new long[AFixedWindowBenchmark.MEASURE_CYCLES];
 		for (int i = 0; i < AFixedWindowBenchmark.MEASURE_CYCLES; i++) {
@@ -114,17 +128,21 @@ public abstract class AFixedWindowBenchmark {
 		}
 		return runtimes;
 	}
-	
+
 	private static void print(final String name, final long aNanos) {
 		final double nanos = aNanos;
 		final double micros = nanos / 1000;
 		final double millis = micros / 1000;
-		System.out.printf("  %s %20.2f %20.2f %20.2f%n", name, nanos, micros, millis);
+		System.out.printf("  %s %20.2f %20.2f %20.2f%n", name, nanos, micros,
+				millis);
 	}
-	
+
 	private void report(final long[] runtimes) {
-		System.out.println(this.getClass().getSimpleName() + " (" + this.comment + ", runs: " + runtimes.length + "; calls per run: " + this.pairs.size() + ")");
-		System.out.println("                     nanos               micros               millis");
+		System.out.println(this.getClass().getSimpleName() + " ("
+				+ this.comment + ", runs: " + runtimes.length
+				+ "; calls per run: " + this.pairs.size() + ")");
+		System.out
+				.println("                     nanos               micros               millis");
 		long runtimeSum = 0l;
 		long runtimeMax = Long.MIN_VALUE;
 		long runtimeMin = Long.MAX_VALUE;
@@ -142,7 +160,7 @@ public abstract class AFixedWindowBenchmark {
 		AFixedWindowBenchmark.print("Min", runtimeMin);
 		AFixedWindowBenchmark.print("Max", runtimeMax);
 	}
-	
+
 	/**
 	 * Run benchmark.
 	 */
@@ -151,11 +169,11 @@ public abstract class AFixedWindowBenchmark {
 		final long[] runtimes = this.measure();
 		this.report(runtimes);
 	}
-	
+
 	protected final IFixedTimeWindow create() {
 		return this.benchmarkSuite.create(this.windowSize);
 	}
-	
+
 	protected abstract void call(final ITimeSeries series);
-	
+
 }

@@ -10,33 +10,35 @@ import de.cinovo.timeseries.impl.TimeSeriesPair;
  * @author mfesser
  * 
  */
-public class TimeBucket implements ITimeSeries {
+public class TimeBucket2 implements ITimeSeries {
 
-	private static final int SIZE = 10000;
+	private static final int INITIAL_SIZE = 10000;
 
 	private final ArrayDeque<TimeSeriesPair> values;
 
 	private TimeSeriesPair min = null;
 	private TimeSeriesPair max = null;
-	private CalculatedValue<Double> sum = new CalculatedValue<>(0d);
-	private CalculatedValue<Double> variance = new CalculatedValue<>();
+	private double sum = 0d;
+	private double squared = 0d;
 
 	private long window;
 
-	public TimeBucket(long window) {
+	public TimeBucket2(long window) {
 		this.window = window;
-		this.values = new ArrayDeque<>(SIZE);
+		this.values = new ArrayDeque<>(INITIAL_SIZE);
 	}
 
 	private void calculateMinMax() {
-		this.sum.value = 0d;
+		this.sum = 0d;
+		this.squared = 0d;
 
 		if (this.values.size() > 0) {
 			this.min = this.values.getFirst();
 			this.max = this.min;
 			for (TimeSeriesPair pair : this.values) {
 				this.updateMinMaxAddOnly(pair);
-				this.sum.value = this.sum.value + pair.value();
+				this.sum = this.sum + pair.value();
+				this.squared = this.squared + pair.value() * pair.value();
 			}
 		}
 	}
@@ -55,25 +57,25 @@ public class TimeBucket implements ITimeSeries {
 		}
 	}
 
-	private void calculateVariance() {
-		if (this.values.size() > 0) {
-			double sumAbweichungImQuadrat = 0.0d;
-			float average = this.avergage();
-			for (TimeSeriesPair pair : this.values) {
-				final double abweichung = (pair.value() - average);
-				sumAbweichungImQuadrat += abweichung * abweichung;
-			}
-			this.variance.value = (sumAbweichungImQuadrat / (this.size()));
-		} else {
-			this.variance.calculated = false;
-		}
-
-	}
+	// private void calculateVariance() {
+	// if (this.values.size() > 0) {
+	// double sumAbweichungImQuadrat = 0.0d;
+	// float average = this.avergage();
+	// for (TimeSeriesPair pair : this.values) {
+	// final double abweichung = (pair.value() - average);
+	// sumAbweichungImQuadrat += abweichung * abweichung;
+	// }
+	// this.variance.value = (sumAbweichungImQuadrat / (this.size()));
+	// } else {
+	// this.variance.calculated = false;
+	// }
+	// }
 
 	public void addValue(TimeSeriesPair pair) {
 		this.removeTail(pair.time());
 		this.values.add(pair);
-		this.sum.value = this.sum.value + pair.value();
+		this.sum = this.sum + pair.value();
+		this.squared = this.squared + pair.value() * pair.value();
 		this.updateMinMaxAddOnly(pair);
 	}
 
@@ -87,8 +89,8 @@ public class TimeBucket implements ITimeSeries {
 
 			if (pair.time() < newStartTime) {
 				this.values.pollFirst();
-				this.sum.value = this.sum.value - pair.value();
-				this.variance.calculated = false;
+				this.sum = this.sum - pair.value();
+				this.squared = this.squared - pair.value() * pair.value();
 			} else {
 				break;
 			}
@@ -138,17 +140,20 @@ public class TimeBucket implements ITimeSeries {
 
 	@Override
 	public float avergage() {
-		return new Float(this.sum.value / this.size());
+		return new Float(this.sum / this.size());
 	}
 
 	public double varianceDouble() {
 		if (this.size() == 0) {
 			return Double.NaN;
 		}
-		if (!this.variance.calculated) {
-			this.calculateVariance();
-		}
-		return this.variance.value;
+		int size = this.size();
+		double average = this.sum / size;
+
+		double result = this.squared / size - average * average;
+		// System.out.println("size " + size + " sum " + this.sum + " squared "
+		// + this.squared + " res " + result);
+		return result;
 	}
 
 	@Override

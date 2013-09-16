@@ -17,7 +17,7 @@ public final class FixedTimeWindow implements IFixedTimeWindow {
 
 	private long lastTime = Long.MIN_VALUE;
 
-	private final TimeBucket seriesImplementation;
+	private final TimeBucket2 seriesImplementation;
 
 	/**
 	 * @param window
@@ -31,7 +31,7 @@ public final class FixedTimeWindow implements IFixedTimeWindow {
 		Preconditions.checkArgument(expectedMaxSize > 0,
 				"expectedMaxSize must be > 0");
 
-		this.seriesImplementation = new TimeBucket(window);
+		this.seriesImplementation = new TimeBucket2(window);
 	}
 
 	/**
